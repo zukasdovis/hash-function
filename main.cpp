@@ -27,6 +27,7 @@ int countSetBits(int x)
 
     return count;
 }
+
 double compare(string a, string b)
 {
     if (a.length() != b.length())
@@ -71,7 +72,11 @@ uint8_t bitSplit(uint8_t a, uint8_t b){
     return (high << 4) | low;
 }
 
-string hashFunction(const string& input){
+uint32_t rotateLeft(uint32_t x, int bits){
+    return (x<<bits) | (x>>(32-bits));
+}
+
+uint32_t hashFunction(const string& input){
     
     uint32_t state =0x12345678; 
 
@@ -88,9 +93,18 @@ string hashFunction(const string& input){
 
         state ^= key;
 
-        state ^= key * 0x5D6FEBB8;
+        state += key * 0x5D6FEBB8;
+
+        state = rotateLeft(state,7);
     }
 
+    state ^= state >> 16;  
+    state *= 0x57EFBCA6;
+
+    state ^= state >> 11;
+    state *= 0xCBED548A;
+
+    return state;
 }
 
 
@@ -103,15 +117,25 @@ int main(){
 
     int x;
     cin>>x;
+    vector<string>inputs;
     if(x==0){
-        getline(fd,input);
+        string input;
+        while(getline(fd,input)){
+            inputs.push_back(input);
+        }
     }else if(x==1){
-        getline(cin,input);
+        cin>>input;
+        inputs.push_back(input);
     }
 
-    string hash=input;
+    for(string s:inputs){
 
-    
+        uint32_t result = hashFunction(s);
+        cout<<"Input: "<<s<<endl;
+        cout<<"Hash: "<<hex<<result<<dec<<endl;
+
+    }
+    cin>>x;
 
     return 0;
 }
