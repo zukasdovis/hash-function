@@ -2,20 +2,9 @@
 
 using namespace std;
 
-int hexToInt(char c)
-{
-    if (c >= '0' && c <= '9')
-        return c - '0';
+//Avalanche tikrinimas
 
-    if (c >= 'A' && c <= 'F')
-        return c - 'A' + 10;
-
-    if (c >= 'a' && c <= 'f')
-        return c - 'a' + 10;
-
-    return -1;
-}
-int countSetBits(int x)
+int countSetBits(uint32_t x)
 {
     int count = 0;
 
@@ -28,37 +17,17 @@ int countSetBits(int x)
     return count;
 }
 
-double compare(string a, string b)
+double compare(uint32_t a, uint32_t b)
 {
-    if (a.length() != b.length())
-    {
-        cerr << "Hashes must have the same length!" << endl;
-        return -1;
-    }
+    uint32_t diff = a ^ b;
 
-    int difBits = 0;
+    int differentBits = countSetBits(diff);
 
-    for (int i = 0; i < a.length(); i++)
-    {
-        int x = hexToInt(a[i]);
-        int y = hexToInt(b[i]);
+    int totalBits = 32;
 
-        if (x == -1 || y == -1)
-        {
-            cerr << "Invalid hexadecimal character!" << endl;
-            return -1;
-        }
-
-        int diff = x ^ y;
-
-        difBits += countSetBits(diff);
-    }
-
-    int totalBits = a.length() * 4;
-
-    return double(difBits) / totalBits;
+    return double(differentBits)/totalBits;
 }
-
+//Algortimas
 uint8_t bitSplit(uint8_t a, uint8_t b){
     uint8_t aHigh = a >> 4;
     uint8_t aLow = a & 0x0F;
@@ -71,11 +40,9 @@ uint8_t bitSplit(uint8_t a, uint8_t b){
 
     return (high << 4) | low;
 }
-
 uint32_t rotateLeft(uint32_t x, int bits){
     return (x<<bits) | (x>>(32-bits));
 }
-
 uint32_t hashFunction(const string& input){
     
     uint32_t state =0x12345678; 
@@ -107,7 +74,7 @@ uint32_t hashFunction(const string& input){
     return state;
 }
 
-
+//main
 int main(){
 
     ifstream fd("input.txt");
@@ -116,26 +83,54 @@ int main(){
     string input;
 
     int x;
-    cin>>x;
+
+    cout<<"Ivedimo metodas: 1-is failo, 2-ranka: \n";
+    try{
+        cin>>x;
+
+        if (cin.fail()) {
+            throw invalid_argument("Neteisinga ivestis");
+        }
+    }
+    catch (const invalid_argument& e) {
+        cout << e.what() << endl;
+    }
+
     vector<string>inputs;
-    if(x==0){
+    
+    if(x==1){
         string input;
         while(getline(fd,input)){
             inputs.push_back(input);
         }
-    }else if(x==1){
-        cin>>input;
-        inputs.push_back(input);
-    }
+    }else if(x==2){
+        string input;
 
+        cout<<"Ivesk kiek slaptazodziu vesi: ";
+        int y;
+        cin >> y;
+        cin>>ws;
+        while(y--){
+            getline(cin,input);
+            inputs.push_back(input);
+        } 
+    }
+    vector<uint32_t>results;
     for(string s:inputs){
 
         uint32_t result = hashFunction(s);
+        results.push_back(result);
         cout<<"Input: "<<s<<endl;
         cout<<"Hash: "<<hex<<result<<dec<<endl;
 
     }
-    cin>>x;
+
+    cout<<"Ar norite patikrinti avalanche: 1-taip, 0-ne: ";
+    int y;
+    cin>>y;
+    if(y){
+        //cout<<compare(results[0], results[1]);
+    }
 
     return 0;
 }
