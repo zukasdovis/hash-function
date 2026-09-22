@@ -2,8 +2,22 @@
 
 using namespace std;
 
-//Avalanche tikrinimas
+//from Hex to Binary
+string uint32ToBinary(uint32_t value)
+{
+    string binary;
 
+    for (int i = 31; i >= 0; i--)
+    {
+        binary += ((value >> i) & 1) + '0';
+    }
+
+    return binary;
+}
+
+
+
+//Avalanche tikrinimas
 int countSetBits(uint32_t x)
 {
     int count = 0;
@@ -121,6 +135,7 @@ int main(){
         uint32_t result = hashFunction(s);
         results.push_back(result);
         cout<<"Input: "<<s<<endl;
+        cout<<"Binary from hex: "<<uint32ToBinary(result)<<endl;
         cout<<"Hash: "<<hex<<result<<dec<<endl;
 
     }
@@ -129,7 +144,16 @@ int main(){
     int y;
     cin>>y;
     if(y){
-        //cout<<compare(results[0], results[1]);
+
+        cout<<"Pasirinkite du zodzius, kuriuos norit tikrint:\n";
+        for(int i=1;i<=inputs.size();i++){
+            cout<<i<<"."<<inputs[i-1]<<endl;
+        }
+        int first, second;
+        cout<<"Iveskite du skaicius: ";
+        cin>>first>>second;
+
+        cout<<compare(results[first-1], results[second-1]);
     }
 
     return 0;
