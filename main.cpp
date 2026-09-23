@@ -2,7 +2,7 @@
 
 using namespace std;
 
-//from Hex to Binary
+//from Uint32 to Binary
 string uint32ToBinary(uint32_t value)
 {
     string binary;
@@ -14,8 +14,6 @@ string uint32ToBinary(uint32_t value)
 
     return binary;
 }
-
-
 
 //Avalanche tikrinimas
 int countSetBits(uint32_t x)
@@ -87,56 +85,77 @@ uint32_t hashFunction(const string& input){
 
     return state;
 }
+//Failas
+bool readFile(const string& filename, string& content) {
+    ifstream file(filename, ios::binary);
 
-//main
-int main(){
+    if (!file) {
+        cout << "Klaida: nepavyko atidaryti failo.\n";
+        return false;
+    }
 
-    ifstream fd("input.txt");
-    ofstream fr("result.txt");
+    content.assign(
+        (istreambuf_iterator<char>(file)),
+        istreambuf_iterator<char>()
+    );
 
-    string input;
+    return true;
+}
 
+//Main
+int main(int argc, char* argv[]){
+    
     int x;
 
     cout<<"Ivedimo metodas: 1-is failo, 2-ranka: \n";
-    try{
-        cin>>x;
-
-        if (cin.fail()) {
-            throw invalid_argument("Neteisinga ivestis");
-        }
-    }
-    catch (const invalid_argument& e) {
-        cout << e.what() << endl;
+    
+    if (!(cin >> x)) {
+        cout << "Neteisinga ivestis.\n";
+        return 1;
     }
 
     vector<string>inputs;
     
-    if(x==1){
-        string input;
-        while(getline(fd,input)){
-            inputs.push_back(input);
+    if(x == 1){
+        if(argc < 2){
+            cout << "Klaida: nenurodytas failas.\n";
+            return 1;
         }
-    }else if(x==2){
+        cout<<"Naudojamas FAILO rezimas:\n";
         string input;
 
+        if(!readFile(argv[1], input)){
+            return 1;
+        }
+
+        inputs.push_back(input);
+
+    }else if(x==2){
+        string input;
+        cout<<"Naudojamas RANKINIS rezimas:\n";
         cout<<"Ivesk kiek slaptazodziu vesi: ";
         int y;
         cin >> y;
-        cin>>ws;
+        cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
         while(y--){
-            getline(cin,input);
+            getline(cin, input);
             inputs.push_back(input);
         } 
+    }else{
+        cout<<"Neteisingas pasirinkimas\n";
+        return 1;
     }
     vector<uint32_t>results;
-    for(string s:inputs){
+    for(const string& s:inputs){
 
         uint32_t result = hashFunction(s);
         results.push_back(result);
-        cout<<"Input: "<<s<<endl;
+        cout<<"Input:\n"<<s<<endl;
         cout<<"Binary from hex: "<<uint32ToBinary(result)<<endl;
-        cout<<"Hash: "<<hex<<result<<dec<<endl;
+        cout << "Hash: "
+        << hex << setw(8) << setfill('0') << result
+        << dec << setfill(' ') << endl;
 
     }
 
@@ -145,7 +164,7 @@ int main(){
     cin>>y;
     if(y){
 
-        cout<<"Pasirinkite du zodzius, kuriuos norit tikrint:\n";
+        cout<<"Pasirinkite dvi ivestis, kuriuos norit tikrint:\n";
         for(int i=1;i<=inputs.size();i++){
             cout<<i<<"."<<inputs[i-1]<<endl;
         }
@@ -153,6 +172,11 @@ int main(){
         cout<<"Iveskite du skaicius: ";
         cin>>first>>second;
 
+        if(first < 1 || first > inputs.size() ||
+            second < 1 || second > inputs.size()){
+            cout << "Neteisingas pasirinkimas.\n";
+            return 1;
+        }
         cout<<compare(results[first-1], results[second-1]);
     }
 
