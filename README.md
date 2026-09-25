@@ -134,7 +134,7 @@ Visi sutapę kandidatai: 4729
 Projektą galima sukompiliuoti naudojant C++ kompiliatorių:
 
 ```bash
-g++ main.cpp -o hash
+g++ main.cpp functions.cpp tests.cpp hash.cpp -o hash.exe
 ```
 
 Paleidimas:
