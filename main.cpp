@@ -1,113 +1,15 @@
 #include <bits/stdc++.h>
-
+#include "hash.h"
+#include "functions.h"
+#include "tests.h"
 using namespace std;
 
-//from Uint32 to Binary
-string uint32ToBinary(uint32_t value)
-{
-    string binary;
-
-    for (int i = 31; i >= 0; i--)
-    {
-        binary += ((value >> i) & 1) + '0';
-    }
-
-    return binary;
-}
-
-//Avalanche tikrinimas
-int countSetBits(uint32_t x)
-{
-    int count = 0;
-
-    while (x > 0)
-    {
-        count += x & 1;
-        x >>= 1;
-    }
-
-    return count;
-}
-
-double compare(uint32_t a, uint32_t b)
-{
-    uint32_t diff = a ^ b;
-
-    int differentBits = countSetBits(diff);
-
-    int totalBits = 32;
-
-    return double(differentBits)/totalBits;
-}
-//Algortimas
-uint8_t bitSplit(uint8_t a, uint8_t b){
-    uint8_t aHigh = a >> 4;
-    uint8_t aLow = a & 0x0F;
-
-    uint8_t bHigh = b >> 4;
-    uint8_t bLow = b & 0x0F;
-
-    uint8_t high = (aHigh + bHigh) & 0x0F;
-    uint8_t low = (aLow + bLow) & 0x0F;
-
-    return (high << 4) | low;
-}
-uint32_t rotateLeft(uint32_t x, int bits){
-    return (x<<bits) | (x>>(32-bits));
-}
-uint32_t hashFunction(const string& input){
-    
-    uint32_t state =0x12345678; 
-
-    for(size_t i=0; i < input.size(); i++){
-        uint8_t current = static_cast<uint8_t>(input[i]);
-
-        uint8_t next;
-
-        if(i+1<input.size())
-            next = static_cast<uint8_t>(input[i+1]);
-        else next = 0;
-
-        uint8_t key = bitSplit(current, next);
-
-        state ^= key;
-
-        state += key * 0x5D6FEBB8;
-
-        state = rotateLeft(state,7);
-    }
-
-    state ^= state >> 16;  
-    state *= 0x57EFBCA6;
-
-    state ^= state >> 11;
-    state *= 0xCBED548A;
-
-    return state;
-}
-//Failas
-bool readFile(const string& filename, string& content) {
-    ifstream file(filename, ios::binary);
-
-    if (!file) {
-        cout << "Klaida: nepavyko atidaryti failo.\n";
-        return false;
-    }
-
-    content.assign(
-        (istreambuf_iterator<char>(file)),
-        istreambuf_iterator<char>()
-    );
-
-    return true;
-}
-
-//Main
+// Main
 int main(int argc, char* argv[]){
     
     int x;
 
-    cout<<"Ivedimo metodas: 1-is failo, 2-ranka: \n";
+    cout<<"Ivedimo metodas: 1-is failo, 2-ranka, 3-testai: \n";
     
     if (!(cin >> x)) {
         cout << "Neteisinga ivestis.\n";
@@ -142,6 +44,12 @@ int main(int argc, char* argv[]){
             getline(cin, input);
             inputs.push_back(input);
         } 
+    }else if(x==3){
+        testPerformance();
+        testCollisions();
+        testAvalanche();
+        testBruteForce();
+        return 0;
     }else{
         cout<<"Neteisingas pasirinkimas\n";
         return 1;
