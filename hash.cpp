@@ -31,6 +31,8 @@ uint32_t hashFunction(const std::string& input) {
         
         state += key * 0x5D6FEBB8;
         state = rotateLeft(state, (7 + i) % 32);
+
+        state ^= state >> 11;
     }
     
     state ^= state >> 15;
