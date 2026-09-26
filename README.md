@@ -94,11 +94,22 @@ state ^= state >> 16
 
 ## Naudojimas
 
-```cpp
-#include "hash.h"
+Projektą galima sukompiliuoti naudojant C++ kompiliatorių:
 
-uint32_t hash = hashFunction("hello");
-printf("%08x\n", hash);  // Išveda 8 hex skaitmenų
+```bash
+g++ main.cpp functions.cpp tests.cpp hash.cpp -o hash.exe
+```
+
+Paleidimas:
+
+```bash
+./hash
+```
+
+Windows sistemoje:
+
+```powershell
+.\hash.exe
 ```
 
 ## Versijos
