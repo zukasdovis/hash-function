@@ -45,10 +45,10 @@ int main(int argc, char* argv[]){
             inputs.push_back(input);
         } 
     }else if(x==3){
-        //testPerformance();
-        //testCollisions();
+        testPerformance();
+        testCollisions();
         testAvalanche();
-        //testBruteForce();
+        testBruteForce();
         return 0;
     }else{
         cout<<"Neteisingas pasirinkimas\n";
