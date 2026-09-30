@@ -1,98 +1,385 @@
-# Hash Funkcijos v0.2 – Finali Versija
+# Hash Funkcija v0.2.1
 
-## Algoritmas
+Mano sukurta 32 bitų hash funkcija, skirta eksperimentuoti su hash funkcijų savybėmis: greičiu, kolizijomis, lavinos efektu ir brute-force paieška.
 
-### Seed: Golden Ratio (0x9E3779B9)
-- Universalūs seed skaičius
-- Naudojamas MurmurHash, SipHash
+Projektas sukurtas C++ kalba. Hash funkcija apdoroja įvestį baitų lygiu, todėl gali būti naudojama su įvairiais UTF-8 tekstais.
 
-### Pagrindinės Operacijos
+> **v0.2.1** – nauja hash funkcijos versija, kurioje pakeistas pats hash algoritmas ir atlikti jo savybių eksperimentai.
 
-1. **Ilgio garantija**: `state ^= size * 0x85EBCA6B`
-2. **Kiekvienas baitas**:
-   - Pozicijos XOR: `state ^= (current << (i%4)) | (current >> (8-i%4))`
-   - bitSplit: `state ^= bitSplit(current, next)`
-   - Suma: `state += key * 0x5D6FEBB8`
-   - Rotacija: `state = rotateLeft(state, (7+i)%32)`
-   - **XOR-shift**: `state ^= state >> 11`
-3. **Finalizavimas** (6 operacijų):
-state ^= state >> 15
-state *= 0x57EFBCA6
-state ^= state >> 13
-state *= 0xCBED548A
-state ^= state >> 11
-state *= 0x9E3779B9
-state ^= state >> 16
+---
 
+# Algoritmas
 
-## Eksperimentų Rezultatai
+Hash funkcija grąžina **32 bitų** reikšmę, kuri gali būti pateikiama kaip 8 simbolių šešioliktainis skaičius.
 
-### 1. Sparta
-| Baitai | Vidurkis (ns) | Min | Max | Sklaida |
-|--------|---------------|----|-----|---------|
-| 1 | 120 | 100 | 200 | 40.00 |
-| 8 | 420 | 400 | 500 | 40.00 |
-| 32 | 1320 | 1300 | 1400 | 40.00 |
-| 256 | 10240 | 10200 | 10300 | 48.99 |
+Pradinė `state` reikšmė:
 
-**Išvada:** Lineinis augimas ~120 ns/B
+```cpp
+uint32_t state = 0x9E3779B9;
+```
 
-### 2. Kolizijos (100,000 testas)
-| Ilgis | Kolizijos | % |
-|-------|-----------|-----|
-| 10 B | 2 | 0.0020% |
-| 100 B | 8 | 0.0080% |
-| 500 B | 5 | 0.0050% |
-| 1000 B | 3 | 0.0030% |
+Ši konstanta naudojama kaip pradinis seed.
 
-**Vidurkis: 0.0045%** ✅
+## 1. Įvesties ilgio įtraukimas
 
-### 3. Lavanos Efektas
-- **Nuliai: 364 (0.364%)**
-- **Vidurkis: 15.96 bitų (49.86%)**
-- **Max: 27 bitai**
-0 b: (364) ← Nuliai (0.364%)
-...
-16 b: (14029) ← Piko reikšmė
-...
-27 b: (1)
+Pirmiausia į hash būseną įtraukiamas įvesties ilgis:
 
-### 4. Spėjimas (Brute Force)
-- **Be druskos**: 4730 bandymų, 1423 μs
-- **Su druska (ABC)**: 4730 bandymų, 3235 μs
-- **Kandidatai**: 4729 ✓
+```cpp
+state ^= (uint32_t)input.size() * 0x85EBCA6B;
+```
 
-### 5. v0.1 vs v0.2 Palyginimas
+Tokiu būdu hash reikšmė priklauso ne tik nuo įvesties baitų, bet ir nuo jų skaičiaus.
 
-| Parametras | v0.1 | v0.2 | Gerinimas |
-|-----------|------|------|-----------|
-| Nuliai | 402 | 364 | **-9.5%** |
-| Lavana | 48.26% | 49.86% | **+1.6%** |
-| Kolizijos | 0.008% | 0.0045% | **-44%** |
-| Greitis | 110 ns | 120 ns | **-9%** |
+---
 
-## Išvados
+## 2. Kiekvieno baito apdorojimas
 
-### Pagerėjimai v0.2
-1. **Avalanche Effect**: Greit artėjimas prie 50% idealo
-2. **Nuliai**: Sumažinti 38 atvejų (-9.5%)
-3. **Kolizijos**: Dar rečiau
-4. **Determinizmas**: ✓ Fiksuoti seed
+Kiekvienas įvesties baitas konvertuojamas į `uint8_t`:
 
-### Savybės
-- **Ilgis**: Fiksuotas 32 bitai (8 hex skaičiai)
-- **Vienodumas**: Panaši bitų distribucija visuose ilgiuose
-- **Greitis**: ~120 ns/B – geras praktiniu atžvilgiu
-- **UTF-8**: Baitai traktuojami jų numerinėmis reikšmėmis
+```cpp
+uint32_t current = static_cast<uint8_t>(input[i]);
+```
 
-### Ryšys su Paskaita
+Toliau atliekamos trys pagrindinės operacijos.
 
-1. **Avalanche Effect**: 50% yra standartinė riba (SHA-1, MD5)
-2. **XOR operacijos**: Fundamentalios bitų sklidimui
-3. **Determinizmas**: Reikalingas hash reproducijai
-4. **Seed**: Apsaugoja nuo predictability
+### XOR su konstanta
 
-## Naudojimas
+Baito reikšmė padauginama iš konstantos ir XOR operacija sumaišoma su dabartine būsena:
+
+```cpp
+state ^= current * 0x5D6FEBB8;
+```
+
+### Bitų rotacija
+
+Toliau atliekama kairinė 32 bitų rotacija:
+
+```cpp
+state = rotateLeft(state, (7 + i) % 32);
+```
+
+Rotacijos dydis priklauso nuo apdorojamo baito pozicijos.
+
+Pati rotacijos funkcija:
+
+```cpp
+uint32_t rotateLeft(uint32_t x, int bits) {
+    return (x << bits) | (x >> (32 - bits));
+}
+```
+
+### XOR-shift
+
+Po rotacijos atliekamas papildomas bitų maišymas:
+
+```cpp
+state ^= state >> 11;
+```
+
+Taip kiekvieno baito apdorojimo metu informacija paskleidžiama tarp skirtingų `state` bitų.
+
+---
+
+# Finalizavimas
+
+Apdorojus visus įvesties baitus atliekamas papildomas finalizavimo etapas.
+
+```cpp
+state ^= state >> 15;
+state *= 0x57EFBCA6;
+
+state ^= state >> 13;
+state *= 0xCBED548A;
+
+state ^= state >> 11;
+state *= 0x9E3779B9;
+
+state ^= state >> 16;
+```
+
+Finalizavimo metu naudojamos XOR-shift ir daugybos operacijos.
+
+Pagrindinis tikslas – galutinai išmaišyti `state` bitus ir sumažinti tiesioginę priklausomybę tarp įvesties ir išvesties.
+
+---
+
+# Pilna hash funkcija
+
+```cpp
+#include "hash.h"
+
+uint32_t rotateLeft(uint32_t x, int bits) {
+    return (x << bits) | (x >> (32 - bits));
+}
+
+uint32_t hashFunction(const std::string& input) {
+    uint32_t state = 0x9E3779B9;
+
+    state ^= (uint32_t)input.size() * 0x85EBCA6B;
+
+    for (size_t i = 0; i < input.size(); i++) {
+        uint32_t current = static_cast<uint8_t>(input[i]);
+
+        state ^= current * 0x5D6FEBB8;
+        state = rotateLeft(state, (7 + i) % 32);
+        state ^= state >> 11;
+    }
+
+    state ^= state >> 15;
+    state *= 0x57EFBCA6;
+    state ^= state >> 13;
+    state *= 0xCBED548A;
+    state ^= state >> 11;
+    state *= 0x9E3779B9;
+    state ^= state >> 16;
+
+    return state;
+}
+```
+
+---
+
+# Hash funkcijos savybės
+
+* **Išvesties dydis:** 32 bitai
+* **Išvesties formatas:** 8 šešioliktainiai simboliai
+* **Seed:** `0x9E3779B9`
+* **Deterministinė:** ta pati įvestis visada duoda tą pačią hash reikšmę
+* **UTF-8:** įvestis apdorojama baitais
+* **Įvesties ilgis:** įtraukiamas į pradinę hash būseną
+* **Operacijos:** XOR, bitų poslinkiai, bitų rotacija ir daugyba
+* **Finalizavimas:** 4 XOR-shift ir 3 daugybos operacijos
+
+---
+
+# Eksperimentų rezultatai
+
+## 1. Sparta
+
+Hash funkcija buvo testuojama su skirtingo dydžio įvestimis.
+
+| Baitai | Vidurkis (ns) | Min (ns) | Max (ns) | Sklaida |
+| -----: | ------------: | -------: | -------: | ------: |
+|      1 |           100 |      100 |      100 |    0.00 |
+|      2 |            80 |        0 |      100 |   40.00 |
+|      4 |           140 |      100 |      200 |   48.99 |
+|      8 |           220 |      200 |      300 |   40.00 |
+|     16 |           360 |      300 |      400 |   48.99 |
+|     32 |           600 |      600 |      600 |    0.00 |
+|     64 |          1340 |     1300 |     1400 |   48.99 |
+|    128 |          2420 |     2400 |     2500 |   40.00 |
+|    256 |          4520 |     4000 |     4700 |  271.29 |
+
+Rezultatai rodo, kad didėjant įvesties dydžiui skaičiavimo laikas taip pat didėja.
+
+Kadangi algoritmas kiekvieną įvesties baitą apdoroja vieną kartą, jo laiko sudėtingumas pagal įvesties dydį yra **O(n)**.
+
+---
+
+# 2. Kolizijos
+
+Buvo atlikta po **100 000 testų** su skirtingo ilgio įvestimis.
+
+|  Ilgis | Išmaišos | Kolizijos | Kolizijų % |
+| -----: | -------: | --------: | ---------: |
+|   10 B |   99 994 |         6 |    0.0060% |
+|  100 B |   99 992 |         8 |    0.0080% |
+|  500 B |   99 996 |         4 |    0.0040% |
+| 1000 B |   99 995 |         5 |    0.0050% |
+
+Gauti rezultatai skirtinguose testuose svyravo nuo **4 iki 8 kolizijų**.
+
+Kadangi funkcijos išvestis yra tik 32 bitų, kolizijos teoriškai yra neišvengiamos, kai skirtingų įvesčių skaičius tampa pakankamai didelis.
+
+---
+
+# 3. Lavinos efektas
+
+Lavinos efektui testuoti buvo analizuojamos **100 000 porų**, kuriose originali įvestis buvo pakeista pakeičiant vieną baitą.
+
+Buvo matuojama, kokia dalis iš 32 hash išvesties bitų pasikeitė.
+
+## Rezultatai
+
+| Ilgis |    Min |    Max | Vidurkis |
+| ----: | -----: | -----: | -------: |
+|  10 B | 0.0000 | 0.8438 |   0.4985 |
+|  50 B | 0.0000 | 0.8438 |   0.4966 |
+| 100 B | 0.0000 | 0.8438 |   0.4978 |
+| 500 B | 0.0000 | 0.8438 |   0.4984 |
+
+Bendras rezultatas:
+
+```text
+Min = 0.0000
+Max = 0.8438
+Vidurkis = 0.4978
+```
+
+Tai reiškia, kad vidutiniškai pasikeitė:
+
+**49.78% hash išvesties bitų.**
+
+Idealiu atveju pakeitus vieną įvesties bitą ar nedidelę įvesties dalį būtų tikimasi maždaug 50% išvesties bitų pasikeitimo.
+
+Gautas **49.78%** rezultatas yra labai arti šios reikšmės.
+
+### Bitų skirtumo pasiskirstymas
+
+```text
+0 b:    (380)
+4 b:    (2)
+5 b:    (3)
+6 b:    (23)
+7 b:    (63)
+8 b:    (233)
+9 b:    (661)
+10 b:   (1562)
+11 b:   (2994)
+12 b:   (5267)
+13 b:   (7963)
+14 b:   (10944)
+15 b:   (13348)
+16 b:   (13859)
+17 b:   (13176)
+18 b:   (10805)
+19 b:   (8121)
+20 b:   (5147)
+21 b:   (2907)
+22 b:   (1540)
+23 b:   (663)
+24 b:   (237)
+25 b:   (83)
+26 b:   (14)
+27 b:   (5)
+```
+
+Didžiausia rezultatų koncentracija yra ties **16 bitų**, kas atitinka maždaug pusės 32 bitų hash išvesties pasikeitimą.
+
+---
+
+# 4. Tikslinės reikšmės paieška
+
+Buvo atliktas brute-force eksperimentas, kurio metu buvo ieškoma įvesties, kurios hash reikšmė sutaptų su nustatyta tiksline reikšme.
+
+Tikslas:
+
+```text
+4729
+```
+
+Buvo tikrinami kandidatai nuo `0000` iki `9999`.
+
+## Be druskos
+
+```text
+Tikslas:                    4729
+Pirmas sutapimas:           4729
+Bandymų iki sutapimo:       4730
+Laikas iki pirmo sutapimo:  1330 us
+Visų 10000 bandymų laikas:  2456 us
+Visi sutapę kandidatai:     4729
+```
+
+## Su vieša druska
+
+Naudota druska:
+
+```text
+ABC
+```
+
+Rezultatai:
+
+```text
+Tikslas:                    4729
+Druska:                     ABC
+Pirmas sutapimas:           4729
+Bandymų iki sutapimo:       4730
+Laikas iki pirmo sutapimo:  2121 us
+Visų 10000 bandymų laikas:  4702 us
+Visi sutapę kandidatai:     4729
+```
+
+Šis eksperimentas parodo, kaip papildoma druska pakeičia hash skaičiavimo procesą ir padidina šio konkretaus testo vykdymo laiką.
+
+Šis eksperimentas **neįrodo kriptografinio saugumo**. Hash funkcija nėra skirta slaptažodžių saugojimui ar kitoms kriptografinėms reikmėms.
+
+---
+
+# v0.1 ir v0.2.1 palyginimas
+
+| Parametras      |    v0.1 |                        v0.2.1 |     Pokytis |
+| --------------- | ------: | ----------------------------: | ----------: |
+| Nuliai          |     402 |                           380 |       -5.5% |
+| Lavinos efektas |  48.26% |                        49.78% | +1.52 p. p. |
+| Kolizijos       |  0.008% |                     0.00575%* |       ~-28% |
+| Greitis         | ~110 ns | priklauso nuo įvesties dydžio |           — |
+
+* Vidurkis apskaičiuotas iš naujausių keturių kolizijų testų:
+
+```text
+(0.0060 + 0.0080 + 0.0040 + 0.0050) / 4
+= 0.00575%
+```
+
+v0.2.1 algoritmas yra paprastesnis už ankstesnę versiją: pašalinta `bitSplit()` operacija ir papildomas pozicijos XOR. Vietoje jų naudojamas tiesioginis baito maišymas, bitų rotacija ir XOR-shift.
+
+---
+
+# Ryšys su paskaitos medžiaga
+
+## Avalanche Effect
+
+Lavinos efektas apibūdina situaciją, kai mažas įvesties pakeitimas sukelia didelį hash išvesties pasikeitimą.
+
+v0.2.1 teste gautas vidurkis:
+
+```text
+49.78%
+```
+
+Tai yra arti teorinės 50% reikšmės.
+
+## XOR
+
+XOR operacija naudojama pagrindiniame maišymo procese:
+
+```cpp
+state ^= current * 0x5D6FEBB8;
+```
+
+ir XOR-shift operacijose:
+
+```cpp
+state ^= state >> 11;
+```
+
+## Bitų rotacija
+
+Rotacija naudojama informacijai paskleisti tarp skirtingų `state` bitų:
+
+```cpp
+state = rotateLeft(state, (7 + i) % 32);
+```
+
+## Determinizmas
+
+Hash funkcija yra deterministinė:
+
+```text
+ta pati įvestis → ta pati hash reikšmė
+```
+
+## Fiksuotas išvesties dydis
+
+Nepriklausomai nuo įvesties ilgio hash funkcijos rezultatas yra 32 bitų dydžio.
+
+---
+
+# Naudojimas
+
+## Kompiliavimas
 
 Projektą galima sukompiliuoti naudojant C++ kompiliatorių:
 
@@ -100,25 +387,95 @@ Projektą galima sukompiliuoti naudojant C++ kompiliatorių:
 g++ main.cpp functions.cpp tests.cpp hash.cpp -o hash.exe
 ```
 
-Paleidimas:
+## Paleidimas
 
-```bash
-./hash
-```
-
-Windows sistemoje:
+Windows PowerShell:
 
 ```powershell
 .\hash.exe
 ```
 
-## Versijos
+Git Bash / Linux:
 
-- **v0.1**: Pradinė versija (110 ns/B, 48.26% lavana)
-- **v0.2**: Optimizuota (120 ns/B, 49.86% lavana)
+```bash
+./hash.exe
+```
 
-## Dirbtinio Intelekto Pagalba
-- Padėjo suprasti, kaip veikia hash funkcijos
-- Padėjo realizuti mano v0.1 idėją
-- Padarė v0.2
-- Padėjo paruošti README.md
+---
+
+# Projekto struktūra
+
+```text
+.
+├── main.cpp
+├── hash.cpp
+├── hash.h
+├── functions.cpp
+├── functions.h
+├── tests.cpp
+├── tests.h
+└── README.md
+```
+
+---
+
+# Versijos
+
+## v0.1
+
+Pradinė mano sukurta hash funkcijos versija.
+
+Buvo sukurta pagrindinė 32 bitų hash funkcijos struktūra ir atlikti pirmieji greičio, kolizijų bei lavinos efekto testai.
+
+## v0.2
+
+Algoritmas buvo tobulinamas siekiant pagerinti lavinos efektą ir hash reikšmių pasiskirstymą.
+
+## v0.2.1
+
+Sukurta nauja hash funkcijos versija.
+
+Pagrindiniai v0.2.1 pakeitimai:
+
+* naujas hash algoritmo variantas;
+* įvesties ilgio įtraukimas į `state`;
+* baito daugyba iš `0x5D6FEBB8`;
+* pozicijai priklausanti bitų rotacija;
+* XOR-shift po kiekvieno baito;
+* naujas finalizavimo etapas;
+* atlikti nauji spartos, kolizijų, lavinos efekto ir brute-force testai.
+
+---
+
+# Dirbtinio intelekto pagalba
+
+Kuriant projektą buvo naudojamas dirbtinis intelektas kaip pagalbinė priemonė.
+
+DI buvo naudojamas:
+
+* geriau suprasti hash funkcijų veikimo principus;
+* suprasti bitines operacijas;
+* padėti realizuoti mano idėjas;
+* padėti kurti ir tobulinti hash funkcijos algoritmą;
+* analizuoti testų rezultatus;
+* padėti paruošti `README.md`.
+
+DI buvo naudojamas kaip pagalbinė priemonė mokymosi ir kūrimo procese.
+
+---
+
+# Išvados
+
+v0.2.1 versijoje sukurta nauja 32 bitų hash funkcija, naudojanti XOR, daugybą, bitų rotaciją ir XOR-shift operacijas.
+
+Atlikti eksperimentai parodė:
+
+* algoritmo vykdymo laikas didėja didėjant įvesties dydžiui;
+* 100 000 testų rinkiniuose buvo gautas nedidelis kolizijų skaičius;
+* lavinos efekto vidurkis siekė **49.78%**;
+* bitų skirtumo pasiskirstymo pikas buvo ties **16 pasikeitusių bitų**;
+* funkcija yra deterministinė;
+* nepriklausomai nuo įvesties dydžio rezultatas yra 32 bitų;
+* UTF-8 įvestis apdorojama baitų lygiu.
+
+Projektas skirtas **mokymuisi ir eksperimentams su hash funkcijų kūrimo principais**, o ne kriptografiniam naudojimui.
